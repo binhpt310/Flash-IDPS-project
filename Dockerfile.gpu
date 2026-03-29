@@ -1,0 +1,118 @@
+# Flash-IDPS Jupyter Notebook Docker Image (GPU Support)
+# Optimized for NVIDIA GPU acceleration with CUDA 11.7
+
+# =============================================================================
+# Stage 1: Base image with CUDA support
+# =============================================================================
+FROM nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu22.04 as base
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    LC_ALL=C.UTF-8 \
+    LANG=C.UTF-8 \
+    CUDA_HOME=/usr/local/cuda \
+    PATH=${CUDA_HOME}/bin:${PATH} \
+    LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+
+# Install Python and system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.9 \
+    python3.9-dev \
+    python3.9-distutils \
+    python3-pip \
+    build-essential \
+    gcc \
+    g++ \
+    cmake \
+    libatlas-base-dev \
+    libblas-dev \
+    liblapack-dev \
+    libgomp1 \
+    libffi-dev \
+    libxml2-dev \
+    libxslt1-dev \
+    graphviz \
+    graphviz-dev \
+    pkg-config \
+    git \
+    curl \
+    ca-certificates \
+    wget \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -s /usr/bin/python3.9 /usr/bin/python \
+    && ln -s /usr/bin/pip3 /usr/bin/pip
+
+# Verify CUDA installation
+RUN nvcc --version || echo "CUDA installed, nvcc may not be available in runtime image"
+
+# Set working directory
+WORKDIR /app
+
+# =============================================================================
+# Stage 2: Dependencies installation
+# =============================================================================
+FROM base as dependencies
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+
+# Upgrade pip
+RUN pip install --upgrade pip
+
+# Install PyTorch with CUDA 11.7 support
+RUN pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 \
+    --index-url https://download.pytorch.org/whl/cu117
+
+# Install other Python dependencies
+RUN pip install -r requirements.txt
+
+# Install PyTorch Geometric dependencies (CUDA version)
+RUN pip install --no-cache-dir \
+    pyg-lib==0.2.0 \
+    torch-scatter==2.1.1 \
+    torch-sparse==0.6.17 \
+    torch-cluster==1.6.1 \
+    torch-spline-conv==1.2.2 \
+    -f https://data.pyg.org/whl/torch-2.0.1+cu117.html
+
+# =============================================================================
+# Stage 3: Final image with Jupyter and notebook
+# =============================================================================
+FROM dependencies as final
+
+# Create non-root user for security
+RUN useradd -m -u 1000 -s /bin/bash jupyter && \
+    mkdir -p /app/data /app/models /app/output && \
+    chown -R jupyter:jupyter /app
+
+# Copy the notebook
+COPY --chown=jupyter:jupyter Flash_IDPS_Complete_Workflow.ipynb /app/notebooks/
+
+# Create Jupyter configuration
+RUN mkdir -p /home/jupyter/.jupyter && \
+    echo "c.NotebookApp.ip = '0.0.0.0'" > /home/jupyter/.jupyter/jupyter_notebook_config.py && \
+    echo "c.NotebookApp.port = 8888" >> /home/jupyter/.jupyter/jupyter_notebook_config.py && \
+    echo "c.NotebookApp.open_browser = False" >> /home/jupyter/.jupyter/jupyter_notebook_config.py && \
+    echo "c.NotebookApp.allow_root = True" >> /home/jupyter/.jupyter/jupyter_notebook_config.py && \
+    echo "c.NotebookApp.notebook_dir = '/app'" >> /home/jupyter/.jupyter/jupyter_notebook_config.py && \
+    chown -R jupyter:jupyter /home/jupyter/.jupyter
+
+# Switch to non-root user
+USER jupyter
+
+# Expose Jupyter port
+EXPOSE 8888
+
+# Set working directory
+WORKDIR /app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8888/api || exit 1
+
+# Default command
+CMD ["jupyter", "notebook", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root", "--NotebookApp.token=''"]
