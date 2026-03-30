@@ -113,9 +113,11 @@ goto menu
 :build_gpu
 echo.
 echo %COLOR_BLUE%Building GPU-enabled Docker image...%COLOR_RESET%
+echo %COLOR_YELLOW%Note: GPU build requires NVIDIA Docker runtime%COLOR_RESET%
 docker build -f Dockerfile.gpu -t flash-idps:gpu --target final .
 if errorlevel 1 (
     echo %COLOR_RED%Error: Docker build failed%COLOR_RESET%
+    echo %COLOR_YELLOW%Ensure you have NVIDIA Docker runtime installed%COLOR_RESET%
 ) else (
     echo %COLOR_GREEN%✓ GPU Docker image built successfully%COLOR_RESET%
 )

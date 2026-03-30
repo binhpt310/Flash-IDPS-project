@@ -1,10 +1,10 @@
 # Flash-IDPS Jupyter Notebook Docker Image (GPU Support)
-# Optimized for NVIDIA GPU acceleration with CUDA 11.7
+# Optimized for NVIDIA GPU acceleration with CUDA 11.8
 
 # =============================================================================
 # Stage 1: Base image with CUDA support
 # =============================================================================
-FROM nvidia/cuda:11.7.1-cudnn8-runtime-ubuntu22.04 as base
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04 AS base
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -13,16 +13,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
-    LANG=C.UTF-8 \
-    CUDA_HOME=/usr/local/cuda \
-    PATH=${CUDA_HOME}/bin:${PATH} \
-    LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+    LANG=C.UTF-8
 
-# Install Python and system dependencies
+# Install Python 3.10 and system dependencies (Ubuntu 22.04 default)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3.9 \
-    python3.9-dev \
-    python3.9-distutils \
+    python3.10 \
+    python3.10-dev \
     python3-pip \
     build-essential \
     gcc \
@@ -43,11 +39,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     wget \
     && rm -rf /var/lib/apt/lists/* \
-    && ln -s /usr/bin/python3.9 /usr/bin/python \
-    && ln -s /usr/bin/pip3 /usr/bin/pip
+    && ln -sf /usr/bin/python3.10 /usr/bin/python \
+    && ln -sf /usr/bin/pip3 /usr/bin/pip
 
-# Verify CUDA installation
-RUN nvcc --version || echo "CUDA installed, nvcc may not be available in runtime image"
+# Verify Python installation
+RUN python --version && pip --version
 
 # Set working directory
 WORKDIR /app
@@ -55,38 +51,66 @@ WORKDIR /app
 # =============================================================================
 # Stage 2: Dependencies installation
 # =============================================================================
-FROM base as dependencies
+FROM base AS dependencies
 
 # Copy requirements first for better caching
 COPY requirements.txt .
 
 # Upgrade pip
-RUN pip install --upgrade pip
+RUN pip install --upgrade pip setuptools wheel
 
-# Install PyTorch with CUDA 11.7 support
+# Install PyTorch with CUDA 11.8 support
 RUN pip install torch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 \
-    --index-url https://download.pytorch.org/whl/cu117
+    --index-url https://download.pytorch.org/whl/cu118
 
-# Install other Python dependencies
-RUN pip install -r requirements.txt
+# Install other Python dependencies (excluding torch which is already installed)
+RUN pip install --no-cache-dir \
+    numpy==1.26.4 \
+    pandas==2.2.2 \
+    scipy==1.10.1 \
+    scikit-learn==1.2.0 \
+    networkx==2.8.7 \
+    igraph==0.11.5 \
+    cairocffi==1.7.0 \
+    graphviz==0.20.1 \
+    gensim==4.3.1 \
+    nltk==3.8.1 \
+    matplotlib==3.8.4 \
+    seaborn==0.13.0 \
+    tqdm==4.66.1 \
+    psutil==5.9.5 \
+    xxhash==3.2.0 \
+    chardet==5.2.0 \
+    pytz==2024.1 \
+    yacs==0.1.8 \
+    wget==3.2 \
+    gdown==5.2.0 \
+    wandb==0.24.1 \
+    jupyterlab==4.0.2 \
+    notebook==7.0.2 \
+    ipykernel==6.25.0 \
+    pytest==8.3.5
 
-# Install PyTorch Geometric dependencies (CUDA version)
+# Install PyTorch Geometric dependencies (CUDA 11.8 version)
 RUN pip install --no-cache-dir \
     pyg-lib==0.2.0 \
     torch-scatter==2.1.1 \
     torch-sparse==0.6.17 \
     torch-cluster==1.6.1 \
     torch-spline-conv==1.2.2 \
-    -f https://data.pyg.org/whl/torch-2.0.1+cu117.html
+    -f https://data.pyg.org/whl/torch-2.0.1+cu118.html
+
+# Install torch-geometric last
+RUN pip install --no-cache-dir torch-geometric==2.5.3
 
 # =============================================================================
 # Stage 3: Final image with Jupyter and notebook
 # =============================================================================
-FROM dependencies as final
+FROM dependencies AS final
 
 # Create non-root user for security
 RUN useradd -m -u 1000 -s /bin/bash jupyter && \
-    mkdir -p /app/data /app/models /app/output && \
+    mkdir -p /app/data /app/models /app/output /app/notebooks && \
     chown -R jupyter:jupyter /app
 
 # Copy the notebook

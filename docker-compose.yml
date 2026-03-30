@@ -49,36 +49,35 @@ services:
     networks:
       - flash-idps-network
 
-  # Optional: GPU-enabled version (uncomment to use)
-  # Requires NVIDIA Docker runtime
-  # flash-idps-gpu:
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.gpu
-  #     target: final
-  #   container_name: flash-idps-gpu-notebook
-  #   ports:
-  #     - "8889:8888"
-  #   volumes:
-  #     - ./:/app:cached
-  #     - ./data:/app/data
-  #     - ./models:/app/models
-  #     - ./output:/app/output
-  #   environment:
-  #     - JUPYTER_ENABLE_LAB=yes
-  #     - NVIDIA_VISIBLE_DEVICES=all
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 1
-  #             capabilities: [gpu]
-  #   restart: unless-stopped
-  #   networks:
-  #     - flash-idps-network
-  #   profiles:
-  #     - gpu
+  # GPU-enabled version
+  flash-idps-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.gpu
+      target: final
+    container_name: flash-idps-gpu-notebook
+    ports:
+      - "8889:8888"
+    volumes:
+      - ./:/app:cached
+      - ./data:/app/data
+      - ./models:/app/models
+      - ./output:/app/output
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - flash-idps-network
+    profiles:
+      - gpu
 
 networks:
   flash-idps-network:
