@@ -1,0 +1,76 @@
+# ============================================
+# Heavy folders - Datasets & Models & Env
+# ============================================
+
+# Datasets (44GB)
+data/
+
+# Virtual environment (5.3GB)
+venv/
+env/
+.venv/
+
+# Flash-IDS repo with trained weights (124MB)
+Flash-IDS/
+
+# PIDSMaker repo (72MB)
+PIDSMaker/
+
+# Output visualizations (337MB) - regenerate locally
+output/
+
+# ============================================
+# Ignore all files inside nested git repos
+# ============================================
+# These are separate repos, tracked independently
+Flash-IDS/**
+!Flash-IDS/.gitignore
+data/**
+!data/.gitignore
+PIDSMaker/**
+!PIDSMaker/.gitignore
+
+# ============================================
+# IDE & Editor
+# ============================================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Jupyter
+.ipynb_checkpoints/
+jupyter_debug/
+
+# ============================================
+# Python
+# ============================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Distribution
+*.tar.gz
+*.zip
+*.rar
+
+# ============================================
+# OS Files
+# ============================================
+.DS_Store
+Thumbs.db
+*.log
+
+# ============================================
+# Qwen
+# ============================================
+.qwen/
+
+/Flash-IDS
+/PIDSMaker
